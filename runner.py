@@ -201,23 +201,42 @@ DISPATCH = {
 }
 
 
-async def call_model(prompt, semaphore):
-    route = MODEL_ROUTES.get(prompt["model"])
+PROVIDER_CONCURRENCY = {
+    "openai": 30,
+    "anthropic": 5,
+    "gemini": 15,
+    "openrouter": 20,
+}
+
+
+def _get_route(model):
+    route = MODEL_ROUTES.get(model)
     if route is None:
         for prefix, r in [("gpt", "openai"), ("claude", "anthropic"), ("gemini", "gemini"), ("llama", "openrouter"), ("mistral", "openrouter")]:
-            if prompt["model"].startswith(prefix):
+            if model.startswith(prefix):
                 route = r
                 break
+    return route
+
+
+async def call_model(prompt, semaphore):
+    route = _get_route(prompt["model"])
     if route is None:
         return "ERROR: unknown model"
     return await DISPATCH[route](prompt, semaphore)
 
 
 async def run_batch(tasks, max_concurrent=20):
-    semaphore = asyncio.Semaphore(max_concurrent)
+    provider_semaphores = {
+        provider: asyncio.Semaphore(limit)
+        for provider, limit in PROVIDER_CONCURRENCY.items()
+    }
+    fallback_semaphore = asyncio.Semaphore(max_concurrent)
 
     async def execute(task):
         prompt = task["prompt"]
+        route = _get_route(prompt["model"])
+        semaphore = provider_semaphores.get(route, fallback_semaphore)
         raw = await call_model(prompt, semaphore)
         score = parse_response(raw, task["question_framing"])
         return {
