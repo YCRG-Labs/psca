@@ -1,5 +1,5 @@
 DIMENSIONS = {
-    "model": ["gpt-5.4-nano", "gpt-5.4", "claude-sonnet-4-6", "gemini-2.5-flash", "llama-3.1-8b", "mistral-7b"],
+    "model": ["gpt-5.4-nano", "gpt-5.4", "claude-sonnet-4-6", "gemini-2.5-flash", "llama-3.3-70b", "mistral-small"],
     "persona_format": ["bare", "narrative", "third_person", "survey"],
     "question_framing": ["direct", "likert", "forced_choice"],
     "system_prompt": ["neutral", "academic", "survey_admin"],
@@ -106,8 +106,8 @@ COST_PER_1M_INPUT = {
     "gpt-5.4": 2.50,
     "claude-sonnet-4-6": 3.00,
     "gemini-2.5-flash": 0.30,
-    "llama-3.1-8b": 0.06,
-    "mistral-7b": 0.06,
+    "llama-3.3-70b": 0.39,
+    "mistral-small": 0.10,
 }
 
 COST_PER_1M_OUTPUT = {
@@ -115,8 +115,8 @@ COST_PER_1M_OUTPUT = {
     "gpt-5.4": 15.00,
     "claude-sonnet-4-6": 15.00,
     "gemini-2.5-flash": 2.50,
-    "llama-3.1-8b": 0.06,
-    "mistral-7b": 0.06,
+    "llama-3.3-70b": 0.39,
+    "mistral-small": 0.40,
 }
 
 AVG_INPUT_TOKENS = 400

@@ -18,8 +18,8 @@ _gemini_client = None
 _openrouter_client = None
 
 OPENROUTER_MODELS = {
-    "llama-3.1-8b": "meta-llama/llama-3.1-8b-instruct",
-    "mistral-7b": "mistralai/mistral-7b-instruct",
+    "llama-3.3-70b": "meta-llama/llama-3.3-70b-instruct",
+    "mistral-small": "mistralai/mistral-small-24b-instruct-2501",
 }
 
 
@@ -90,7 +90,7 @@ async def call_openai(prompt, semaphore, max_retries=8):
                         {"role": "user", "content": prompt["user"]},
                     ],
                     temperature=prompt["temperature"],
-                    max_completion_tokens=10,
+                    max_completion_tokens=50,
                 )
                 return response.choices[0].message.content
             except openai.RateLimitError:
@@ -189,8 +189,8 @@ MODEL_ROUTES = {
     "gpt-5.4": "openai",
     "claude-sonnet-4-6": "anthropic",
     "gemini-2.5-flash": "gemini",
-    "llama-3.1-8b": "openrouter",
-    "mistral-7b": "openrouter",
+    "llama-3.3-70b": "openrouter",
+    "mistral-small": "openrouter",
 }
 
 DISPATCH = {
