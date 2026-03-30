@@ -162,7 +162,7 @@ async def main():
     lhs.add_argument("--n_specs", type=int, default=100)
 
     salt = sub.add_parser("saltelli", parents=[shared], help="Saltelli sampling for Sobol indices")
-    salt.add_argument("--saltelli_n", type=int, default=512)
+    salt.add_argument("--saltelli_n", type=int, default=256)
     salt.add_argument("--second_order", action="store_true")
 
     perm = sub.add_parser("permutation", parents=[shared], help="Permutation inference on existing results")
