@@ -12,7 +12,7 @@ from prompts import build_prompt
 from runner import run_batch, save_results
 from analysis import (
     run_analysis, sobol_analysis, permutation_inference,
-    flipped_spec_analysis, anes_benchmark, load_results,
+    flipped_spec_analysis, anes_benchmark, bootstrap_ci, load_results,
 )
 
 
@@ -170,6 +170,9 @@ async def main():
 
     flip = sub.add_parser("flipped", parents=[shared], help="Analyze flipped specifications")
 
+    ci = sub.add_parser("bootstrap", parents=[shared], help="Bootstrap CIs on eta-squared")
+    ci.add_argument("--n_boot", type=int, default=1000)
+
     ab = sub.add_parser("anes", parents=[shared], help="Benchmark against ANES 2024")
     ab.add_argument("--anes_path", default=None)
 
@@ -190,6 +193,9 @@ async def main():
         await run_permutation(args)
     elif args.command == "flipped":
         await run_flipped(args)
+    elif args.command == "bootstrap":
+        df = load_results(args.output)
+        bootstrap_ci(df, n_boot=args.n_boot, seed=args.seed)
     elif args.command == "anes":
         await run_anes(args)
 

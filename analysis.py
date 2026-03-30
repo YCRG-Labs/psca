@@ -122,27 +122,95 @@ def specification_curve(gaps_df, item_key):
     return pct
 
 
+def _compute_eta_sq(item_df):
+    ss_total = ((item_df["score"] - item_df["score"].mean()) ** 2).sum()
+    if ss_total == 0:
+        return {d: 0.0 for d in DIMENSIONS}
+    eta_sq = {}
+    for dim in DIMENSIONS:
+        groups = item_df.groupby(dim)["score"]
+        grand_mean = item_df["score"].mean()
+        ss_between = sum(
+            len(g) * (g.mean() - grand_mean) ** 2
+            for _, g in groups
+        )
+        eta_sq[dim] = ss_between / ss_total
+    return eta_sq
+
+
+def bootstrap_ci(df, n_boot=1000, ci=0.95, seed=42):
+    FIGURES_DIR.mkdir(exist_ok=True)
+    rng = np.random.default_rng(seed)
+    alpha = (1 - ci) / 2
+
+    results = {}
+    for item in df["item"].unique():
+        item_df = df[df["item"] == item]
+        spec_ids = item_df["spec_id"].unique()
+        observed = _compute_eta_sq(item_df)
+
+        boot_samples = {d: [] for d in DIMENSIONS}
+        for _ in range(n_boot):
+            resampled_ids = rng.choice(spec_ids, size=len(spec_ids), replace=True)
+            boot_df = pd.concat(
+                [item_df[item_df["spec_id"] == sid] for sid in resampled_ids],
+                ignore_index=True,
+            )
+            boot_eta = _compute_eta_sq(boot_df)
+            for d in DIMENSIONS:
+                boot_samples[d].append(boot_eta[d])
+
+        item_results = {}
+        for d in DIMENSIONS:
+            samples = np.array(boot_samples[d])
+            item_results[d] = {
+                "eta_sq": observed[d],
+                "ci_lo": np.quantile(samples, alpha),
+                "ci_hi": np.quantile(samples, 1 - alpha),
+            }
+        results[item] = item_results
+
+        print(f"\n=== Bootstrap 95% CI: {item} ===")
+        for d in DIMENSIONS:
+            r = item_results[d]
+            print(f"  {d:20s}: η² = {r['eta_sq']:.4f}  [{r['ci_lo']:.4f}, {r['ci_hi']:.4f}]")
+
+    items = list(results.keys())
+    fig, axes = plt.subplots(1, len(items), figsize=(6 * len(items), 5), sharey=True)
+    if len(items) == 1:
+        axes = [axes]
+    palette = ["#c0392b", "#2980b9", "#27ae60", "#f39c12", "#8e44ad", "#16a085"]
+
+    for ax, item in zip(axes, items):
+        vals = [results[item][d]["eta_sq"] for d in DIMENSIONS]
+        los = [results[item][d]["eta_sq"] - results[item][d]["ci_lo"] for d in DIMENSIONS]
+        his = [results[item][d]["ci_hi"] - results[item][d]["eta_sq"] for d in DIMENSIONS]
+        x = np.arange(len(DIMENSIONS))
+        ax.bar(x, vals, color=palette, edgecolor="none",
+               yerr=[los, his], capsize=4, error_kw={"linewidth": 1})
+        ax.set_xticks(x)
+        ax.set_xticklabels(
+            [d.replace("_", " ").title() for d in DIMENSIONS],
+            rotation=35, ha="right", fontsize=9,
+        )
+        ax.set_title(item.replace("_", " ").title(), fontweight="normal")
+        ax.set_ylabel(r"$\eta^2$")
+
+    plt.suptitle("Variance Decomposition with 95% Bootstrap CI", fontweight="normal", y=1.02)
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / "variance_decomposition_ci.png")
+    plt.close()
+
+    return results
+
+
 def variance_decomposition(df):
     FIGURES_DIR.mkdir(exist_ok=True)
 
     results = {}
     for item in df["item"].unique():
         item_df = df[df["item"] == item]
-        ss_total = ((item_df["score"] - item_df["score"].mean()) ** 2).sum()
-        if ss_total == 0:
-            results[item] = {d: 0.0 for d in DIMENSIONS}
-            continue
-
-        eta_sq = {}
-        for dim in DIMENSIONS:
-            groups = item_df.groupby(dim)["score"]
-            grand_mean = item_df["score"].mean()
-            ss_between = sum(
-                len(g) * (g.mean() - grand_mean) ** 2
-                for _, g in groups
-            )
-            eta_sq[dim] = ss_between / ss_total
-        results[item] = eta_sq
+        results[item] = _compute_eta_sq(item_df)
 
     results_df = pd.DataFrame(results).T
 
