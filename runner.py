@@ -220,7 +220,7 @@ DISPATCH = {
 PROVIDER_CONCURRENCY = {
     "openai": 30,
     "anthropic": 5,
-    "gemini": 15,
+    "gemini": 5,
     "openrouter": 20,
 }
 

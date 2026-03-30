@@ -171,7 +171,7 @@ async def main():
     flip = sub.add_parser("flipped", parents=[shared], help="Analyze flipped specifications")
 
     ci = sub.add_parser("bootstrap", parents=[shared], help="Bootstrap CIs on eta-squared")
-    ci.add_argument("--n_boot", type=int, default=1000)
+    ci.add_argument("--n_boot", type=int, default=5000)
 
     ab = sub.add_parser("anes", parents=[shared], help="Benchmark against ANES 2024")
     ab.add_argument("--anes_path", default=None)
