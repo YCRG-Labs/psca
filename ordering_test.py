@@ -105,8 +105,10 @@ async def main():
     elapsed = time.time() - start
     print(f"Completed in {elapsed:.0f}s")
 
+    task_ordering = {t["spec_id"]: t["ordering"] for t in tasks}
     for r in results:
         tid = r["spec_id"]
+        r["ordering"] = task_ordering.get(tid, "unknown")
         letter_map = mappings[tid]
         raw = r.get("raw_response", "")
         if raw and not raw.startswith("ERROR"):
