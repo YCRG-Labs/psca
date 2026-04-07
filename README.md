@@ -27,34 +27,34 @@ OPENROUTER_API_KEY=...
 ## Usage
 
 ```bash
-# Latin Hypercube sampling (main run)
+Latin Hypercube sampling (main run)
 python pilot.py lhs --n_specs 600 --output full_lhs.json
 
-# Analyze results
+Analyze results
 python pilot.py analyze --output full_lhs.json
 
-# Permutation inference
+Permutation inference
 python pilot.py permutation --output full_lhs.json
 
-# Flipped specification analysis
+Flipped specification analysis
 python pilot.py flipped --output full_lhs.json
 
-# Bootstrap CIs on eta-squared (default 5,000 resamples)
+Bootstrap CIs on eta-squared (default 5,000 resamples)
 python pilot.py bootstrap --output full_lhs.json
 
-# ANES benchmark comparison
+ANES benchmark comparison
 python pilot.py anes --output full_lhs.json
 
-# Saltelli sampling for Sobol indices
+Saltelli sampling for Sobol indices
 python pilot.py saltelli --items gun_control --output saltelli_gun.json
 
-# Sobol analysis on existing Saltelli results
+Sobol analysis on existing Saltelli results
 python pilot.py sobol --output saltelli_gun.json
 
-# Patch failed specs from a previous run
+Patch failed specs from a previous run
 python patch_run.py --input saltelli_gun.json --items gun_control
 
-# Forced-choice option ordering test
+Forced-choice option ordering test
 python ordering_test.py
 ```
 
@@ -71,11 +71,3 @@ python ordering_test.py
 | `ordering_test.py` | Position bias test for forced-choice framing |
 | `patch_run.py` | Reruns failed specifications from a previous run |
 | `download_anes.py` | ANES 2024 data download and processing |
-
-## Key findings
-
-- Partisan gap direction is robust: preserved in 83–95% of specifications across three policy items
-- Question framing dominates variance on gun control (η² = 0.160), driven by position bias in smaller models
-- Model choice is the top driver for immigration (η² = 0.076) and government spending (η² = 0.061)
-- LLMs systematically overestimate partisan gaps by 1.5–2.1× relative to ANES ground truth
-- Frontier models (Claude, GPT-5.4) are order-invariant; smaller models show significant position bias
