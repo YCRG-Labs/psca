@@ -45,6 +45,7 @@ def load_results(filename="pilot_results.json", exclude_models=None):
 
 
 def compute_partisan_gaps(df):
+    from config import ANES_ITEMS
     grouped = (
         df.groupby(["spec_id", "item", "party"])["score"]
         .mean()
@@ -55,17 +56,23 @@ def compute_partisan_gaps(df):
         columns="party",
         values="score",
     ).reset_index()
-    pivot["gap"] = pivot["Democrat"] - pivot["Republican"]
+    raw_gap = pivot["Democrat"] - pivot["Republican"]
+    sign = pivot["item"].map(
+        lambda i: -1 if "Democrat < Republican" in ANES_ITEMS.get(i, {}).get("expected_gap", "Democrat > Republican") else 1
+    )
+    pivot["gap"] = raw_gap * sign
     pivot["gap_positive"] = pivot["gap"] > 0
     return pivot
 
 
 def _compute_spec_gaps_with_pvalues(df):
+    from config import ANES_ITEMS
     rows = []
     for (spec_id, item), group in df.groupby(["spec_id", "item"]):
         d = group[group["party"] == "Democrat"]["score"]
         r = group[group["party"] == "Republican"]["score"]
-        gap = d.mean() - r.mean()
+        sign = -1 if "Democrat < Republican" in ANES_ITEMS.get(item, {}).get("expected_gap", "Democrat > Republican") else 1
+        gap = (d.mean() - r.mean()) * sign
         if len(d) > 1 and len(r) > 1:
             _, p_val = scipy_stats.ttest_ind(d, r)
         else:
