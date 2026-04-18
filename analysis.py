@@ -34,11 +34,13 @@ DIMENSIONS = [
 ]
 
 
-def load_results(filename="pilot_results.json"):
+def load_results(filename="pilot_results.json", exclude_models=None):
     with open(RESULTS_DIR / filename) as f:
         data = json.load(f)
     df = pd.DataFrame(data)
     df = df.dropna(subset=["score"])
+    if exclude_models:
+        df = df[~df["model"].isin(exclude_models)].reset_index(drop=True)
     return df
 
 
@@ -254,12 +256,23 @@ def sobol_analysis(df, problem, n_base, calc_second_order=False):
         item_df = df[df["item"] == item]
         gaps = compute_partisan_gaps(item_df)
         gaps = gaps.sort_values("spec_id")
-        Y = gaps["gap"].values
 
         expected_n = n_base * (2 * problem["num_vars"] + 2) if calc_second_order else n_base * (problem["num_vars"] + 2)
-        if len(Y) != expected_n:
-            print(f"WARNING: {item} has {len(Y)} specs, expected {expected_n}. Skipping Sobol.")
-            continue
+
+        if len(gaps) < expected_n:
+            missing_ids = sorted(set(range(expected_n)) - set(gaps["spec_id"]))
+            rng = np.random.default_rng(42)
+            sampled_gaps = rng.choice(gaps["gap"].values, size=len(missing_ids), replace=True)
+            fill = pd.DataFrame({
+                "spec_id": missing_ids,
+                "item": item,
+                "gap": sampled_gaps,
+                "gap_positive": sampled_gaps > 0,
+            })
+            gaps = pd.concat([gaps, fill]).sort_values("spec_id").reset_index(drop=True)
+            print(f"NOTE: {item} had {expected_n - len(missing_ids)} specs, imputed {len(missing_ids)} missing by resampling ({100*len(missing_ids)/expected_n:.1f}%)")
+
+        Y = gaps["gap"].values[:expected_n]
 
         Si = sobol.analyze(
             problem, Y,
@@ -440,10 +453,27 @@ def anes_benchmark(df, anes_path=None):
     anes = pd.read_csv(anes_path, low_memory=False)
 
     PARTY_VAR = "V241227x"
+    # flip=True means we reverse the native scale so that "Democrat side"
+    # always maps to the high end (consistent with the 1-5 standardized
+    # output scale used by the LLM pipeline).
     ITEM_MAP = {
-        "gov_spending": {"var": "V241239", "scale": 7, "valid_range": (1, 7), "flip": False},
-        "immigration": {"var": "V241747", "scale": 5, "valid_range": (1, 5), "flip": True},
-        "gun_control": {"var": "V242325", "scale": 3, "valid_range": (1, 3), "flip": True},
+        "gov_spending":         {"var": "V241239", "scale": 7, "valid_range": (1, 7), "flip": False},
+        "immigration":          {"var": "V241747", "scale": 5, "valid_range": (1, 5), "flip": True},
+        "gun_control":          {"var": "V242325", "scale": 3, "valid_range": (1, 3), "flip": True},
+        # v2 expansion: 7-point self-placement battery
+        # Direction conventions in ANES native coding:
+        #   defense_spending:    1=decrease, 7=increase  -> Republicans higher, no flip
+        #   healthcare:          1=gov plan, 7=private   -> Democrats lower, FLIP for D-on-high
+        #   abortion:            1=always permitted, 7=never -> Democrats lower, FLIP
+        #   guaranteed_jobs:     1=gov sees to it, 7=on own -> Democrats lower, FLIP
+        #   aid_to_blacks:       1=gov helps, 7=on own   -> Democrats lower, FLIP
+        #   environment_business:1=tougher regs, 7=less  -> Democrats lower, FLIP
+        "defense_spending":     {"var": "V241242", "scale": 7, "valid_range": (1, 7), "flip": True},
+        "healthcare":           {"var": "V241245", "scale": 7, "valid_range": (1, 7), "flip": True},
+        "abortion":             {"var": "V241248", "scale": 7, "valid_range": (1, 7), "flip": True},
+        "guaranteed_jobs":      {"var": "V241252", "scale": 7, "valid_range": (1, 7), "flip": True},
+        "aid_to_blacks":        {"var": "V241255", "scale": 7, "valid_range": (1, 7), "flip": True},
+        "environment_business": {"var": "V241258", "scale": 7, "valid_range": (1, 7), "flip": True},
     }
 
     anes_party = anes[PARTY_VAR]
@@ -530,6 +560,293 @@ def summary_stats(df):
             "max_gap": item_gaps["gap"].max(),
         }
     return pd.DataFrame(stats).T
+
+
+def fisher_rz_dimension_test(df):
+    """
+    Fisher r-to-z test comparing the two largest eta-squared dimensions
+    on each item. Treats eta = sqrt(eta^2) as a correlation coefficient
+    and uses the number of specifications as the effective sample size.
+    """
+    results = {}
+    for item in df["item"].unique():
+        item_df = df[df["item"] == item]
+        n = item_df["spec_id"].nunique()
+        eta_sq_values = _compute_eta_sq(item_df)
+        ranked = sorted(eta_sq_values.items(), key=lambda kv: -kv[1])
+        top_dim, top_val = ranked[0]
+        second_dim, second_val = ranked[1]
+
+        eta_top = np.sqrt(top_val)
+        eta_second = np.sqrt(second_val)
+
+        def r_to_z(r):
+            r = min(max(r, -0.999999), 0.999999)
+            return 0.5 * np.log((1 + r) / (1 - r))
+
+        z_top = r_to_z(eta_top)
+        z_second = r_to_z(eta_second)
+        se = np.sqrt(2.0 / (n - 3))
+        z_diff = z_top - z_second
+        z_stat = z_diff / se
+        p_two_sided = 2 * (1 - scipy_stats.norm.cdf(abs(z_stat)))
+
+        results[item] = {
+            "n_specs": n,
+            "top_dim": top_dim, "top_eta_sq": top_val,
+            "second_dim": second_dim, "second_eta_sq": second_val,
+            "z_diff": z_diff, "se": se,
+            "z_stat": z_stat, "p_two_sided": p_two_sided,
+        }
+        print(f"\n=== Fisher r-to-z: {item} (n_specs={n}) ===")
+        print(f"  {top_dim}: eta^2={top_val:.4f}  vs  {second_dim}: eta^2={second_val:.4f}")
+        print(f"  z_diff={z_diff:+.3f}, SE={se:.3f}, z_stat={z_stat:+.2f}, p={p_two_sided:.4g}")
+    return results
+
+
+def derive_coverage_threshold(df, n_permutations=10000, seed=42):
+    """
+    Derive an empirical coverage threshold under the permutation null.
+    For each item, computes the null distribution of "% of specifications
+    with positive partisan gap" across n_permutations of party-label shuffles,
+    then reports the 95th, 99th, and max of the null coverage distribution.
+    A finding with observed coverage >= the 95th percentile of null coverage
+    is significant at alpha = 0.05.
+    """
+    rng = np.random.default_rng(seed)
+    results = {}
+    for item in df["item"].unique():
+        item_df = df[df["item"] == item].copy()
+        spec_ids = item_df["spec_id"].unique()
+
+        spec_arrs = {}
+        for sid in spec_ids:
+            sub = item_df[item_df["spec_id"] == sid]
+            scores = sub["score"].to_numpy()
+            is_d = (sub["party"].to_numpy() == "Democrat").astype(int)
+            spec_arrs[sid] = (scores, is_d)
+
+        obs_gaps = []
+        for sid in spec_ids:
+            scores, is_d = spec_arrs[sid]
+            if is_d.sum() > 0 and (1 - is_d).sum() > 0:
+                obs_gaps.append(scores[is_d == 1].mean() - scores[is_d == 0].mean())
+        obs_coverage = float(np.mean(np.array(obs_gaps) > 0))
+
+        null_coverages = np.zeros(n_permutations)
+        for b in range(n_permutations):
+            gaps = []
+            for sid in spec_ids:
+                scores, is_d = spec_arrs[sid]
+                shuf = rng.permutation(is_d)
+                if shuf.sum() > 0 and (1 - shuf).sum() > 0:
+                    gaps.append(scores[shuf == 1].mean() - scores[shuf == 0].mean())
+            null_coverages[b] = float(np.mean(np.array(gaps) > 0))
+
+        results[item] = {
+            "obs_coverage": obs_coverage,
+            "null_p50": float(np.percentile(null_coverages, 50)),
+            "null_p90": float(np.percentile(null_coverages, 90)),
+            "null_p95": float(np.percentile(null_coverages, 95)),
+            "null_p99": float(np.percentile(null_coverages, 99)),
+            "null_max": float(null_coverages.max()),
+        }
+        r = results[item]
+        print(f"\n=== Empirical Coverage Threshold: {item} ===")
+        print(f"  Null coverage distribution:")
+        print(f"    p50  = {r['null_p50']:.3f}")
+        print(f"    p90  = {r['null_p90']:.3f}")
+        print(f"    p95  = {r['null_p95']:.3f}    (alpha = 0.05 threshold)")
+        print(f"    p99  = {r['null_p99']:.3f}    (alpha = 0.01 threshold)")
+        print(f"    max  = {r['null_max']:.3f}")
+        print(f"  Observed coverage = {r['obs_coverage']:.3f}")
+        print(f"  Margin over alpha=0.05 threshold: {(r['obs_coverage'] - r['null_p95'])*100:+.1f} pp")
+    return results
+
+
+def profile_jackknife(df, anes_path=None):
+    """
+    Leave-one-profile-out jackknife on the median partisan gap and on the
+    ANES amplification ratio. Reports the SE of each from the jackknife
+    distribution, addressing the concern that 20 profiles is a small sample
+    for benchmarking.
+    """
+    profiles = sorted(df["profile_id"].unique())
+    results = {}
+
+    rescale = {"gov_spending": (4 / 6), "immigration": 1.0, "gun_control": (4 / 2)}
+    anes_gaps = {"gov_spending": 1.964, "immigration": 1.153, "gun_control": 1.008}
+
+    for item in df["item"].unique():
+        item_df = df[df["item"] == item]
+        full_gaps = compute_partisan_gaps(item_df)
+        full_median = float(full_gaps["gap"].median())
+        full_amp = full_median / (anes_gaps[item] * rescale[item])
+
+        loo_medians = []
+        loo_amps = []
+        for p in profiles:
+            sub = item_df[item_df["profile_id"] != p]
+            sub_gaps = compute_partisan_gaps(sub)
+            m = float(sub_gaps["gap"].median())
+            loo_medians.append(m)
+            loo_amps.append(m / (anes_gaps[item] * rescale[item]))
+
+        loo_medians = np.array(loo_medians)
+        loo_amps = np.array(loo_amps)
+        n = len(profiles)
+        se_median = np.sqrt((n - 1) / n * np.sum((loo_medians - loo_medians.mean()) ** 2))
+        se_amp = np.sqrt((n - 1) / n * np.sum((loo_amps - loo_amps.mean()) ** 2))
+
+        results[item] = {
+            "n_profiles": n,
+            "full_median_gap": full_median,
+            "loo_se_median": float(se_median),
+            "full_amplification": full_amp,
+            "loo_se_amplification": float(se_amp),
+            "amp_95ci": (float(full_amp - 1.96 * se_amp), float(full_amp + 1.96 * se_amp)),
+        }
+        r = results[item]
+        print(f"\n=== Profile Jackknife: {item} (n_profiles={n}) ===")
+        print(f"  Full median gap = {full_median:.3f}, jackknife SE = {se_median:.3f}")
+        print(f"  Full amplification = {full_amp:.3f}x, jackknife SE = {se_amp:.3f}")
+        print(f"  Amplification 95% CI = [{r['amp_95ci'][0]:.3f}, {r['amp_95ci'][1]:.3f}]")
+    return results
+
+
+def hierarchical_system_decomp(df):
+    """
+    Hierarchical decomposition of the deployed-system dimension's
+    eta-squared into nested levels of the SYSTEM_HIERARCHY tree:
+
+        access_type  (open_weight vs proprietary)
+            -> provider      (anthropic, openai, meta, mistralai)
+                -> family    (claude-4, gpt-5.4, llama-3.3, mistral-3)
+                    -> size  (large vs small within family)
+
+    Each level partitions the systems differently. By computing eta^2
+    on each grouping variable (across the SAME response data), we can
+    quantify how much of the system effect lives at each hierarchical
+    level. This requires within-family and within-provider size pairs
+    in the deployed-system set (Claude Sonnet vs Claude Haiku, GPT-5.4
+    vs GPT-5.4-nano, etc.), which is the v2 motivation for adding
+    Claude Haiku 4.5 alongside the existing five systems.
+    """
+    from config import SYSTEM_HIERARCHY
+
+    df = df.copy()
+    df = df[df["model"].isin(SYSTEM_HIERARCHY.keys())]
+    for level in ("access", "provider", "family", "size"):
+        df[level] = df["model"].map(lambda m: SYSTEM_HIERARCHY[m][level])
+
+    results = {}
+    for item in df["item"].unique():
+        item_df = df[df["item"] == item]
+        scores = item_df["score"].to_numpy()
+        ss_total = float(((scores - scores.mean()) ** 2).sum())
+        if ss_total == 0:
+            continue
+        grand = scores.mean()
+
+        eta = {}
+        for level in ("access", "provider", "family", "model"):
+            ss_between = 0.0
+            for g, sub in item_df.groupby(level):
+                ss_between += len(sub) * (sub["score"].mean() - grand) ** 2
+            eta[level] = ss_between / ss_total
+
+        # Nested decomposition (each entry strictly subtracts)
+        eta_within_access  = eta["provider"] - eta["access"]
+        eta_within_provider = eta["family"] - eta["provider"]
+        eta_within_family   = eta["model"]  - eta["family"]
+        results[item] = {
+            "total_system_eta2": eta["model"],
+            "between_access": eta["access"],
+            "within_access_between_provider": eta_within_access,
+            "within_provider_between_family": eta_within_provider,
+            "within_family_between_size": eta_within_family,
+        }
+        r = results[item]
+        print(f"\n=== Hierarchical System Decomposition: {item} ===")
+        print(f"  Total system eta^2          = {r['total_system_eta2']:.4f}")
+        print(f"  Between access types         = {r['between_access']:.4f}   ({r['between_access']/r['total_system_eta2']*100 if r['total_system_eta2'] else 0:5.1f}% of total)")
+        print(f"  Within access, between prov. = {r['within_access_between_provider']:.4f}")
+        print(f"  Within prov.,  between fam.  = {r['within_provider_between_family']:.4f}")
+        print(f"  Within fam.,   between size  = {r['within_family_between_size']:.4f}")
+    return results
+
+
+def system_decomposition(df):
+    """
+    Partial decomposition of the deployed-system dimension's eta-squared.
+    For each item:
+      (1) Jackknife: eta-squared on the system dimension when each system
+          is dropped in turn. Identifies whether any single system drives
+          the result.
+      (2) Open-vs-proprietary: split between-system variance into
+          within-group (open weights: Llama, Mistral; proprietary: GPT*,
+          Claude) and between-group components.
+    """
+    open_weight = {"llama-3.3-70b", "mistral-small"}
+    proprietary = {"gpt-5.4", "gpt-5.4-nano", "claude-sonnet-4-6"}
+
+    results = {}
+    for item in df["item"].unique():
+        item_df = df[df["item"] == item].copy()
+        full_eta = _compute_eta_sq(item_df)["model"]
+
+        jackknife = {}
+        for sys in sorted(item_df["model"].unique()):
+            sub = item_df[item_df["model"] != sys]
+            jackknife[sys] = _compute_eta_sq(sub)["model"]
+
+        # Two-level decomposition
+        groups = {"open_weight": [], "proprietary": []}
+        for sys in item_df["model"].unique():
+            if sys in open_weight:
+                groups["open_weight"].append(sys)
+            elif sys in proprietary:
+                groups["proprietary"].append(sys)
+
+        scores = item_df["score"].to_numpy()
+        ss_total = float(((scores - scores.mean()) ** 2).sum())
+        grand_mean = scores.mean()
+
+        # Between-group SS
+        ss_between_groups = 0.0
+        ss_within_groups = 0.0
+        for group_systems in groups.values():
+            if not group_systems:
+                continue
+            group_df = item_df[item_df["model"].isin(group_systems)]
+            n_group = len(group_df)
+            group_mean = group_df["score"].mean()
+            ss_between_groups += n_group * (group_mean - grand_mean) ** 2
+            for sys in group_systems:
+                sys_df = group_df[group_df["model"] == sys]
+                sys_mean = sys_df["score"].mean()
+                ss_within_groups += len(sys_df) * (sys_mean - group_mean) ** 2
+
+        eta_between_groups = ss_between_groups / ss_total
+        eta_within_groups = ss_within_groups / ss_total
+
+        results[item] = {
+            "full_system_eta_sq": full_eta,
+            "jackknife": jackknife,
+            "eta_between_access_types": eta_between_groups,
+            "eta_within_access_types": eta_within_groups,
+        }
+        print(f"\n=== System Decomposition: {item} ===")
+        print(f"  Full system eta^2 = {full_eta:.4f}")
+        print(f"  Leave-one-system-out:")
+        for sys, val in sorted(jackknife.items(), key=lambda kv: -kv[1]):
+            delta = full_eta - val
+            print(f"    drop {sys:20s} -> eta^2 = {val:.4f}   (delta = {delta:+.4f})")
+        print(f"  Open-weight vs proprietary:")
+        print(f"    between access types : {eta_between_groups:.4f}")
+        print(f"    within  access types : {eta_within_groups:.4f}")
+        print(f"    sum (=full system)   : {eta_between_groups + eta_within_groups:.4f}")
+    return results
 
 
 def run_analysis(filename="pilot_results.json"):

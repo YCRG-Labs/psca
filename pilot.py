@@ -13,6 +13,8 @@ from runner import run_batch, save_results
 from analysis import (
     run_analysis, sobol_analysis, permutation_inference,
     flipped_spec_analysis, anes_benchmark, bootstrap_ci, load_results,
+    fisher_rz_dimension_test, derive_coverage_threshold,
+    profile_jackknife, system_decomposition, hierarchical_system_decomp,
 )
 
 
@@ -60,8 +62,15 @@ def estimate_cost(tasks):
 
 
 async def run_lhs(args):
-    print(f"Generating {args.n_specs} LHS specifications (seed={args.seed})...")
-    specs = generate_specifications(args.n_specs, seed=args.seed)
+    only_models = getattr(args, "only_models", None)
+    spec_id_offset = getattr(args, "spec_id_offset", 0)
+    print(f"Generating {args.n_specs} LHS specifications (seed={args.seed}"
+          f"{', only_models=' + str(only_models) if only_models else ''}"
+          f"{', offset=' + str(spec_id_offset) if spec_id_offset else ''})...")
+    specs = generate_specifications(
+        args.n_specs, seed=args.seed,
+        only_models=only_models, spec_id_offset=spec_id_offset,
+    )
 
     items = args.items or list(ANES_ITEMS.keys())
     print(f"Items: {', '.join(items)}")
@@ -157,9 +166,17 @@ async def main():
     shared.add_argument("--seed", type=int, default=42)
     shared.add_argument("--dry_run", action="store_true")
     shared.add_argument("--output", default="pilot_results.json")
+    shared.add_argument("--exclude_models", nargs="+", default=None,
+                        help="Model identifiers to exclude from analysis (e.g. gemini-2.5-flash)")
 
     lhs = sub.add_parser("lhs", parents=[shared], help="LHS sampling run")
     lhs.add_argument("--n_specs", type=int, default=100)
+    lhs.add_argument("--only_models", nargs="+", default=None,
+                     help="Restrict the model dimension to these systems "
+                          "(useful for incremental v2 catch-up runs)")
+    lhs.add_argument("--spec_id_offset", type=int, default=0,
+                     help="Offset spec_ids so a follow-up run does not collide "
+                          "with an earlier file")
 
     salt = sub.add_parser("saltelli", parents=[shared], help="Saltelli sampling for Sobol indices")
     salt.add_argument("--saltelli_n", type=int, default=256)
@@ -180,33 +197,92 @@ async def main():
     ab = sub.add_parser("anes", parents=[shared], help="Benchmark against ANES 2024")
     ab.add_argument("--anes_path", default=None)
 
+    fisher = sub.add_parser("fisher", parents=[shared],
+                            help="Fisher r-to-z test for top-2 dimension dominance")
+
+    threshold = sub.add_parser("threshold", parents=[shared],
+                               help="Derive empirical coverage threshold under permutation null")
+    threshold.add_argument("--n_permutations", type=int, default=10000)
+
+    profile = sub.add_parser("profile_sensitivity", parents=[shared],
+                             help="Leave-one-profile-out jackknife on amplification ratio")
+
+    sysdecomp = sub.add_parser("system_decomp", parents=[shared],
+                               help="Decompose deployed-system eta-squared (jackknife + open vs proprietary)")
+
+    hsysd = sub.add_parser("hierarchical_decomp", parents=[shared],
+                           help="Hierarchical decomposition of system variance (access -> provider -> family -> size)")
+
     analyze = sub.add_parser("analyze", parents=[shared], help="Re-run analysis on existing results")
 
     legacy = sub.add_parser("run", parents=[shared], help="Legacy: same as lhs")
     legacy.add_argument("--n_specs", type=int, default=100)
 
     args = parser.parse_args()
+    exclude = getattr(args, "exclude_models", None)
+    if exclude:
+        print(f"[load_results: excluding models {exclude}]")
 
     if args.command is None or args.command == "analyze":
-        run_analysis(args.output if hasattr(args, "output") else "pilot_results.json")
+        df = load_results(
+            args.output if hasattr(args, "output") else "pilot_results.json",
+            exclude_models=exclude,
+        )
+        run_analysis_df(df)
     elif args.command in ("lhs", "run"):
         await run_lhs(args)
     elif args.command == "saltelli":
         await run_saltelli(args)
     elif args.command == "permutation":
-        await run_permutation(args)
+        df = load_results(args.output, exclude_models=exclude)
+        permutation_inference(df, n_permutations=args.n_permutations, seed=args.seed)
     elif args.command == "flipped":
-        await run_flipped(args)
+        df = load_results(args.output, exclude_models=exclude)
+        for item in (args.items or ["gun_control"]):
+            flipped_spec_analysis(df, item_key=item)
     elif args.command == "sobol":
         from sampler import get_saltelli_problem
-        df = load_results(args.output)
+        df = load_results(args.output, exclude_models=exclude)
         problem = get_saltelli_problem()
         sobol_analysis(df, problem, args.saltelli_n, calc_second_order=args.second_order)
     elif args.command == "bootstrap":
-        df = load_results(args.output)
+        df = load_results(args.output, exclude_models=exclude)
         bootstrap_ci(df, n_boot=args.n_boot, seed=args.seed)
     elif args.command == "anes":
-        await run_anes(args)
+        from pathlib import Path
+        df = load_results(args.output, exclude_models=exclude)
+        anes_benchmark(df, anes_path=Path(args.anes_path) if args.anes_path else None)
+    elif args.command == "fisher":
+        df = load_results(args.output, exclude_models=exclude)
+        fisher_rz_dimension_test(df)
+    elif args.command == "threshold":
+        df = load_results(args.output, exclude_models=exclude)
+        derive_coverage_threshold(df, n_permutations=args.n_permutations, seed=args.seed)
+    elif args.command == "profile_sensitivity":
+        df = load_results(args.output, exclude_models=exclude)
+        profile_jackknife(df)
+    elif args.command == "system_decomp":
+        df = load_results(args.output, exclude_models=exclude)
+        system_decomposition(df)
+    elif args.command == "hierarchical_decomp":
+        df = load_results(args.output, exclude_models=exclude)
+        hierarchical_system_decomp(df)
+
+
+def run_analysis_df(df):
+    """run_analysis but on a pre-filtered dataframe."""
+    from analysis import summary_stats, compute_partisan_gaps, specification_curve, variance_decomposition
+    print(f"Total responses: {len(df)}")
+    stats = summary_stats(df)
+    print("\n=== Partisan Gap Summary ===")
+    print(stats.to_string(float_format="%.2f"))
+    gaps = compute_partisan_gaps(df)
+    for item in df["item"].unique():
+        pct = specification_curve(gaps, item)
+        print(f"{item}: {pct:.0f}% of specifications preserve expected partisan direction")
+    print("\n=== Variance Decomposition (eta-squared) ===")
+    var_df = variance_decomposition(df)
+    print(var_df.to_string(float_format="%.4f"))
 
 
 if __name__ == "__main__":

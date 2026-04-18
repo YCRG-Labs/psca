@@ -58,21 +58,25 @@ def get_openrouter_client():
         )
     return _openrouter_client
 
-LETTER_MAP = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5}
+LETTER_MAP = {"a": 1, "b": 2, "c": 3, "d": 4, "e": 5, "f": 6, "g": 7}
 RESULTS_DIR = Path("results")
 
 
-def parse_response(text, question_framing):
+def parse_response(text, question_framing, scale_max=5):
+    """Parse a model response. scale_max is the upper bound of the item's
+    native scale (5 for the original three items, 7 for the v2 battery)."""
     if text is None:
         return None
     text = text.strip().lower()
 
     if question_framing == "forced_choice":
+        max_letter = chr(96 + scale_max)
         for char in text:
-            if char in LETTER_MAP:
+            if char in LETTER_MAP and char <= max_letter:
                 return LETTER_MAP[char]
 
-    match = re.search(r"\b([1-5])\b", text)
+    pattern = rf"\b([1-{scale_max}])\b"
+    match = re.search(pattern, text)
     if match:
         return int(match.group(1))
 
@@ -204,6 +208,7 @@ MODEL_ROUTES = {
     "gpt-5.4-nano": "openai",
     "gpt-5.4": "openai",
     "claude-sonnet-4-6": "anthropic",
+    "claude-haiku-4-5": "anthropic",
     "gemini-2.5-flash": "gemini",
     "llama-3.3-70b": "openrouter",
     "mistral-small": "openrouter",
@@ -249,12 +254,15 @@ async def run_batch(tasks, max_concurrent=20):
     }
     fallback_semaphore = asyncio.Semaphore(max_concurrent)
 
+    from config import ANES_ITEMS
+
     async def execute(task):
         prompt = task["prompt"]
         route = _get_route(prompt["model"])
         semaphore = provider_semaphores.get(route, fallback_semaphore)
         raw = await call_model(prompt, semaphore)
-        score = parse_response(raw, task["question_framing"])
+        scale_max = ANES_ITEMS[task["item"]].get("scale_max", 5)
+        score = parse_response(raw, task["question_framing"], scale_max=scale_max)
         return {
             "spec_id": task["spec_id"],
             "profile_id": task["profile_id"],

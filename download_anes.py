@@ -8,9 +8,17 @@ OUTPUT_NAME = "anes_timeseries_2024.csv"
 
 PARTY_VAR = "V241227x"
 ITEM_VARS = {
+    # Original 3 items (5- and 3-pt scales, standardized to 1-5 in pipeline)
     "gov_spending": "V241239",
     "immigration": "V241747",
     "gun_control": "V242325",
+    # v2 expansion: ANES 7-pt policy battery (self-placement items)
+    "defense_spending": "V241242",
+    "healthcare": "V241245",
+    "abortion": "V241248",
+    "guaranteed_jobs": "V241252",
+    "aid_to_blacks": "V241255",
+    "environment_business": "V241258",
 }
 
 

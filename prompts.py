@@ -50,6 +50,7 @@ def build_persona(profile, persona_format):
 
 def build_question(item_key, question_framing):
     item = ANES_ITEMS[item_key]
+    scale_max = item.get("scale_max", max(item["scale"].keys()))
 
     if question_framing == "direct":
         scale_text = "\n".join(
@@ -57,17 +58,17 @@ def build_question(item_key, question_framing):
         )
         return (
             f"{item['text']}\n\n"
-            f"Choose a number from 1-5:\n{scale_text}\n\n"
+            f"Choose a number from 1-{scale_max}:\n{scale_text}\n\n"
             f"Respond with only the number."
         )
 
     if question_framing == "likert":
         return (
-            f"On a scale of 1 to 5:\n"
+            f"On a scale of 1 to {scale_max}:\n"
             f"  1 = {item['scale'][1]}\n"
-            f"  5 = {item['scale'][5]}\n\n"
+            f"  {scale_max} = {item['scale'][scale_max]}\n\n"
             f"{item['text']}\n\n"
-            f"Respond with only a number from 1 to 5."
+            f"Respond with only a number from 1 to {scale_max}."
         )
 
     choices = "\n".join(
