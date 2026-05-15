@@ -108,7 +108,7 @@ ANES_ITEMS = {
         },
         "scale_max": 7,
         "anes_var": "V241242",
-        "expected_gap": "Democrat < Republican",  # gap will be negative
+        "expected_gap": "Democrat < Republican",
         "domain": "economic",
     },
     "healthcare": {

@@ -15,7 +15,7 @@ A reported finding's coverage must exceed the p95 of the null distribution to re
 ## Interpretation
 
 - All three observed coverages exceed even the α = 0.01 threshold (≤ 0.530 on every item). Directional consistency findings survive at the strictest conventional level.
-- The α = 0.05 threshold averages **~0.513** across items — substantially below the 0.80 heuristic threshold proposed in the paper.
+- The α = 0.05 threshold averages **~0.513** across items, substantially below the 0.80 heuristic threshold proposed in the paper.
 - Gun control sits 35.8 percentage points above its derived threshold; spending and immigration sit ~48 percentage points above theirs. This matches the paper's qualitative claim ("36 to 49 percentage points") with precise values.
 
 ## Suggested paper updates

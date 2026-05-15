@@ -31,33 +31,58 @@ OPENROUTER_API_KEY=...
 
 ## Quickstart
 
+Latin Hypercube sampling, the main run:
+
 ```bash
-# Latin Hypercube sampling — the main run
 psca lhs --n_specs 600 --output full_lhs.json
+```
 
-# Reproduce Gemini-excluded headline numbers
+Reproduce Gemini-excluded headline numbers:
+
+```bash
 psca analyze --output full_lhs.json --exclude_models gemini-2.5-flash
+```
 
-# Derive empirical coverage thresholds (10k permutations)
+Derive empirical coverage thresholds (10k permutations):
+
+```bash
 psca threshold --output full_lhs.json --exclude_models gemini-2.5-flash --n_permutations 10000
+```
 
-# Permutation inference for the partisan signal
+Permutation inference for the partisan signal:
+
+```bash
 psca permutation --output full_lhs.json
+```
 
-# Variance decomposition + Fisher r-to-z dominance
+Variance decomposition and Fisher r-to-z dominance:
+
+```bash
 psca analyze --output full_lhs.json
 psca fisher --output full_lhs.json
+```
 
-# Bootstrap CIs on eta-squared (5,000 resamples)
+Bootstrap CIs on eta-squared (5,000 resamples):
+
+```bash
 psca bootstrap --output full_lhs.json
+```
 
-# ANES benchmark comparison (amplification factor)
+ANES benchmark comparison (amplification factor):
+
+```bash
 psca anes --output full_lhs.json
+```
 
-# Flipped specification analysis
+Flipped specification analysis:
+
+```bash
 psca flipped --output full_lhs.json
+```
 
-# Saltelli sampling for Sobol sensitivity indices
+Saltelli sampling for Sobol sensitivity indices:
+
+```bash
 psca saltelli --items gun_control --output saltelli_gun.json
 psca sobol --output saltelli_gun.json
 ```
@@ -83,9 +108,9 @@ GPT-5.4, GPT-5.4-nano, Claude Sonnet 4.6, Llama 3.3 70B, Mistral Small. Gemini 2
 |---|---|
 | `src/psca/config.py` | Six prompt dimensions, 20 battleground-state profiles, ANES items, cost tables |
 | `src/psca/sampler.py` | Latin Hypercube and Saltelli specification generators |
-| `src/psca/prompts.py` | Prompt construction from spec + profile + item |
+| `src/psca/prompts.py` | Prompt construction from spec, profile, and item |
 | `src/psca/runner.py` | Async multi-provider API runner with retries |
-| `src/psca/analysis.py` | Partisan gaps, η², bootstrap CIs, Sobol, permutation tests, ANES benchmarks, threshold derivation |
+| `src/psca/analysis.py` | Partisan gaps, eta-squared, bootstrap CIs, Sobol, permutation tests, ANES benchmarks, threshold derivation |
 | `src/psca/cli.py` | CLI entry point (`psca ...`) |
 | `ordering_test.py` | Position bias test for forced-choice framing |
 | `patch_run.py` | Reruns failed specifications from a previous run |
@@ -114,4 +139,4 @@ See `CITATION.cff` for machine-readable metadata.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

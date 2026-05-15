@@ -8,11 +8,11 @@ All notable changes to P-SCA are documented here. Format follows [Keep a Changel
 
 ### Added
 - Initial public release coinciding with the Yale FDS AI for Social Science workshop lightning talk.
-- `psca.sampler` — Latin Hypercube and Saltelli specification generators over the prompt multiverse.
-- `psca.prompts` — prompt construction from specification + demographic profile + ANES item.
-- `psca.runner` — async multi-provider API runner with per-provider concurrency limits and exponential-backoff retries.
-- `psca.analysis` — variance decomposition (η²), Fisher r-to-z dominance test, permutation inference, bootstrap CIs, Saltelli/Sobol indices, profile jackknife, flipped-specification analysis, ANES benchmark, empirical coverage threshold derivation.
-- `psca.config` — six prompt dimensions, 20 battleground-state demographic profiles, three 2024 ANES items, cost tables.
+- `psca.sampler`: Latin Hypercube and Saltelli specification generators over the prompt multiverse.
+- `psca.prompts`: prompt construction from specification, demographic profile, and ANES item.
+- `psca.runner`: async multi-provider API runner with per-provider concurrency limits and exponential-backoff retries.
+- `psca.analysis`: variance decomposition (eta-squared), Fisher r-to-z dominance test, permutation inference, bootstrap CIs, Saltelli/Sobol indices, profile jackknife, flipped-specification analysis, ANES benchmark, empirical coverage threshold derivation.
+- `psca.config`: six prompt dimensions, 20 battleground-state demographic profiles, three 2024 ANES items, cost tables.
 - CLI: `psca lhs`, `psca saltelli`, `psca analyze`, `psca permutation`, `psca threshold`, `psca anes`, `psca bootstrap`, `psca flipped`, `psca sobol`, `psca fisher`, `psca system_decomp`, `psca hierarchical_decomp`, `psca profile_sensitivity`.
 
 [Unreleased]: https://github.com/YCRG-Labs/psca/compare/v0.1.0...HEAD

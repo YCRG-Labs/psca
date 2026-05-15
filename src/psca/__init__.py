@@ -1,4 +1,3 @@
-"""P-SCA: Prompt Specification Curve Analysis."""
 
 try:
     from ._version import __version__
