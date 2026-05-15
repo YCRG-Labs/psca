@@ -5,7 +5,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.PENDING.svg)](https://doi.org/10.5281/zenodo.PENDING)
 
-A specification curve analysis framework for evaluating the robustness of LLM-simulated public opinion across prompt design choices. P-SCA systematically varies six prompt dimensions — **model**, **persona format**, **question framing**, **system prompt**, **temperature**, and **few-shot examples** — to measure how sensitive LLM partisan-gap estimates are to arbitrary researcher decisions. Benchmarked against ANES 2024 ground-truth survey data.
+A specification curve analysis framework for evaluating the robustness of LLM-simulated public opinion across prompt design choices. P-SCA systematically varies six prompt dimensions, **model**, **persona format**, **question framing**, **system prompt**, **temperature**, and **few-shot examples**, to measure how sensitive LLM partisan-gap estimates are to arbitrary researcher decisions. Benchmarked against ANES 2024 ground-truth survey data.
 
 ## Install
 
