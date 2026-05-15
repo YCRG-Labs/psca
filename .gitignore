@@ -4,3 +4,12 @@ __pycache__/
 results/
 figures/
 .DS_Store
+src/psca/_version.py
+build/
+dist/
+*.egg-info/
+
+data/anes_timeseries_*.csv
+data/anes_timeseries_*.zip
+data/anes_timeseries_*.pdf
+data/index.html

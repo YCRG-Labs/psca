@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats.qmc import LatinHypercube
 from SALib.sample import saltelli as saltelli_sampler
-from config import DIMENSIONS, DIMENSION_ORDER
+from .config import DIMENSIONS, DIMENSION_ORDER
 
 
 def _discretize(continuous_samples, dim_order, dim_levels):

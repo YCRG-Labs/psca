@@ -6,10 +6,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import PROFILES, ANES_ITEMS, REPEATS
-from sampler import generate_saltelli_specifications
-from prompts import build_prompt
-from runner import run_batch, save_results, RESULTS_DIR
+from psca.config import PROFILES, ANES_ITEMS, REPEATS
+from psca.sampler import generate_saltelli_specifications
+from psca.prompts import build_prompt
+from psca.runner import run_batch, save_results, RESULTS_DIR
 
 
 async def main():

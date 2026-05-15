@@ -10,8 +10,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from config import ANES_ITEMS, PROFILES, SYSTEM_PROMPTS
-from runner import run_batch, save_results, parse_response
+from psca.config import ANES_ITEMS, PROFILES, SYSTEM_PROMPTS
+from psca.runner import run_batch, save_results, parse_response
 
 plt.rcParams.update({
     "font.family": "serif", "mathtext.fontset": "cm", "font.size": 11,

@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use P-SCA in academic work, please cite it as below."
+type: software
+title: "P-SCA: Prompt Specification Curve Analysis"
+abstract: "A toolkit for multiverse analysis of LLM prompt specifications. Implements Latin Hypercube sampling over researcher-controlled prompt dimensions, variance decomposition by dimension, Fisher r-to-z dominance tests, permutation inference, and specification curve plotting for LLM-based silicon-sampling studies."
+authors:
+  - family-names: Crainic
+    given-names: Jacob
+    email: j.cra@ycrg-labs.org
+    orcid: "https://orcid.org/0009-0005-1084-5407"
+    affiliation: "Management Sciences Lab, Yee Collins Research Group"
+  - family-names: Yee
+    given-names: Brandon
+    email: b.yee@ycrg-labs.org
+    affiliation: "Management Sciences Lab, Yee Collins Research Group"
+  - family-names: Koh
+    given-names: Pairie
+    email: p.koh@ycrg-labs.org
+    affiliation: "Free Systems Lab, Stanford University"
+version: 0.1.0
+date-released: "2026-05-22"
+license: MIT
+repository-code: "https://github.com/YCRG-Labs/psca"
+url: "https://github.com/YCRG-Labs/psca"
+keywords:
+  - large-language-models
+  - specification-curve-analysis
+  - multiverse-analysis
+  - silicon-sampling
+  - prompt-engineering
+  - researcher-degrees-of-freedom
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.PENDING"
+    description: "Concept DOI (all versions) — replace PENDING after first Zenodo release"

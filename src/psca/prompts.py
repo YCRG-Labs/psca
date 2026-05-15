@@ -1,4 +1,4 @@
-from config import ANES_ITEMS, SYSTEM_PROMPTS, FEW_SHOT_EXAMPLES
+from .config import ANES_ITEMS, SYSTEM_PROMPTS, FEW_SHOT_EXAMPLES
 
 
 def build_persona(profile, persona_format):
