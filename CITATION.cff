@@ -17,8 +17,8 @@ authors:
     given-names: Pairie
     email: p.koh@ycrg-labs.org
     affiliation: "Free Systems Lab, Stanford University"
-version: 0.1.0
-date-released: "2026-05-22"
+version: 0.1.1
+date-released: "2026-05-16"
 license: MIT
 repository-code: "https://github.com/YCRG-Labs/psca"
 url: "https://github.com/YCRG-Labs/psca"

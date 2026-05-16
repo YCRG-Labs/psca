@@ -4,6 +4,12 @@ All notable changes to P-SCA are documented here. Format follows [Keep a Changel
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-16
+
+### Fixed
+- Stale absolute imports inside `cli.py`, `analysis.py`, and `runner.py` that caused `ModuleNotFoundError` for users installing from PyPI. Affected commands: `psca analyze`, `psca sobol`, `psca system_decomp`, `psca hierarchical_decomp`.
+- README Python API example: `generate_specifications(n_samples=...)` (was incorrectly documented as `n_specs=`).
+
 ## [0.1.0] - 2026-05-22
 
 ### Added
