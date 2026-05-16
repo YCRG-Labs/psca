@@ -92,7 +92,7 @@ Or use the Python API:
 ```python
 import psca
 
-specs = psca.generate_specifications(n_specs=600, seed=42)
+specs = psca.generate_specifications(n_samples=600, seed=42)
 df = psca.load_results("full_lhs.json", exclude_models=["gemini-2.5-flash"])
 psca.variance_decomposition(df)
 psca.derive_coverage_threshold(df, n_permutations=10000)

@@ -45,7 +45,7 @@ def load_results(filename="pilot_results.json", exclude_models=None):
 
 
 def compute_partisan_gaps(df):
-    from config import ANES_ITEMS
+    from .config import ANES_ITEMS
     grouped = (
         df.groupby(["spec_id", "item", "party"])["score"]
         .mean()
@@ -66,7 +66,7 @@ def compute_partisan_gaps(df):
 
 
 def _compute_spec_gaps_with_pvalues(df):
-    from config import ANES_ITEMS
+    from .config import ANES_ITEMS
     rows = []
     for (spec_id, item), group in df.groupby(["spec_id", "item"]):
         d = group[group["party"] == "Democrat"]["score"]
@@ -692,7 +692,7 @@ def profile_jackknife(df, anes_path=None):
 
 
 def hierarchical_system_decomp(df):
-    from config import SYSTEM_HIERARCHY
+    from .config import SYSTEM_HIERARCHY
 
     df = df.copy()
     df = df[df["model"].isin(SYSTEM_HIERARCHY.keys())]

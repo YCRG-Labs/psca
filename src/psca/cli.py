@@ -241,7 +241,7 @@ async def _async_main():
         for item in (args.items or ["gun_control"]):
             flipped_spec_analysis(df, item_key=item)
     elif args.command == "sobol":
-        from sampler import get_saltelli_problem
+        from .sampler import get_saltelli_problem
         df = load_results(args.output, exclude_models=exclude)
         problem = get_saltelli_problem()
         sobol_analysis(df, problem, args.saltelli_n, calc_second_order=args.second_order)
@@ -270,7 +270,7 @@ async def _async_main():
 
 
 def run_analysis_df(df):
-    from analysis import summary_stats, compute_partisan_gaps, specification_curve, variance_decomposition
+    from .analysis import summary_stats, compute_partisan_gaps, specification_curve, variance_decomposition
     print(f"Total responses: {len(df)}")
     stats = summary_stats(df)
     print("\n=== Partisan Gap Summary ===")

@@ -205,7 +205,7 @@ async def run_batch(tasks, max_concurrent=20):
     }
     fallback_semaphore = asyncio.Semaphore(max_concurrent)
 
-    from config import ANES_ITEMS
+    from .config import ANES_ITEMS
 
     async def execute(task):
         prompt = task["prompt"]
