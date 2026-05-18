@@ -2,12 +2,15 @@
 __pycache__/
 *.pyc
 results/
-figures/
+figures/*
+!figures/*.tex
 .DS_Store
 src/psca/_version.py
 build/
 dist/
 *.egg-info/
+
+notebooks/__marimo__/
 
 data/anes_timeseries_*.csv
 data/anes_timeseries_*.zip
