@@ -505,7 +505,7 @@ def _(PALETTE, alt, generate_specifications, mo, n_samples_slider, pd):
             y=alt.Y("count:Q", title="# specs"),
         )
         .properties(width=105, height=120)
-        .facet(column=alt.Column("dimension:N", title=None, header=alt.Header(labelFontSize=11), spacing=8))
+        .facet(column=alt.Column("dimension:N", title=None, header=alt.Header(labelFontSize=11)))
         .resolve_scale(x="independent")
         .configure_facet(spacing=8)
     )
