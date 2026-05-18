@@ -5,7 +5,6 @@
 #     "marimo",
 #     "numpy",
 #     "pandas",
-#     "scipy",
 # ]
 # ///
 import marimo
@@ -452,14 +451,23 @@ def _(mo):
 
 @app.cell(hide_code=True)
 def _(DIMENSIONS):
-    from scipy.stats.qmc import LatinHypercube
+    import numpy as _np
 
     _DIM_ORDER = ["model", "persona_format", "question_framing",
                   "system_prompt", "temperature", "few_shot"]
 
+    def _latin_hypercube(n_samples, d, seed):
+        rng = _np.random.default_rng(seed)
+        cut = _np.linspace(0.0, 1.0, n_samples + 1)
+        lo, hi = cut[:-1], cut[1:]
+        jittered = lo + (hi - lo) * rng.uniform(size=(d, n_samples))
+        out = _np.empty((n_samples, d))
+        for j in range(d):
+            out[:, j] = jittered[j, rng.permutation(n_samples)]
+        return out
+
     def generate_specifications(n_samples, seed=42):
-        sampler = LatinHypercube(d=len(_DIM_ORDER), seed=seed)
-        draws = sampler.random(n=n_samples)
+        draws = _latin_hypercube(n_samples, len(_DIM_ORDER), seed)
         specs = []
         for i, row in enumerate(draws):
             spec = {"spec_id": i}
